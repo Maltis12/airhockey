@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Air Hockey</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0d0d0d;
+      color: #eee;
+      font-family: monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    .screen { display: none; flex-direction: column; align-items: center; justify-content: center; }
+    .screen.active { display: flex; }
+
+    /* MENU */
+    #menu { gap: 28px; }
+    #menu h1 { font-size: 48px; font-weight: 500; letter-spacing: 0.12em; color: #fff; }
+    #menu-sub { font-size: 13px; color: #555; letter-spacing: 0.06em; }
+    #score-select { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+    #score-select p { font-size: 12px; color: #555; letter-spacing: 0.08em; }
+    #score-btns { display: flex; gap: 10px; }
+    .score-btn {
+      font-family: monospace; font-size: 16px; font-weight: 500;
+      width: 52px; height: 52px;
+      border: 1.5px solid #2a2a2a; border-radius: 8px;
+      background: transparent; color: #666; cursor: pointer; transition: all 0.15s;
+    }
+    .score-btn:hover { border-color: #444; color: #ccc; }
+    .score-btn.selected { border-color: #1D9E75; color: #1D9E75; background: #0a1f17; }
+    #play-btn {
+      font-family: monospace; font-size: 15px; font-weight: 500;
+      padding: 14px 56px;
+      border: 1.5px solid #1D9E75; border-radius: 8px;
+      background: #0a1f17; color: #1D9E75; cursor: pointer;
+      letter-spacing: 0.08em; transition: all 0.15s;
+    }
+    #play-btn:hover { background: #1D9E75; color: #fff; }
+    #controls-hint { display: flex; gap: 2.5rem; font-size: 11px; color: #333; }
+
+    /* GAME */
+    #game { gap: 0; }
+    #scoreboard { display: flex; gap: 2rem; align-items: center; margin-bottom: 10px; }
+    .p-name { font-size: 12px; color: #444; letter-spacing: 0.06em; }
+    .p-score { font-size: 38px; font-weight: 500; }
+    #sep { font-size: 20px; color: #2a2a2a; }
+    #ah-canvas { border: 2px solid #1e1e1e; border-radius: 8px; display: block; }
+    #ah-msg { height: 26px; font-size: 13px; color: #555; text-align: center; margin-top: 8px; }
+    #game-btns { display: flex; gap: 8px; margin-top: 8px; }
+    .gbtn {
+      font-family: monospace; font-size: 12px; padding: 5px 14px;
+      border: 1px solid #222; border-radius: 6px;
+      background: transparent; color: #666; cursor: pointer;
+    }
+    .gbtn:hover { background: #1a1a1a; color: #bbb; }
+
+    /* WIN SCREEN */
+    #winscreen { gap: 22px; }
+    #win-trophy { font-size: 60px; animation: pop 0.4s ease-out; }
+    @keyframes pop { from { transform: scale(0.3); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    #win-title { font-size: 38px; font-weight: 500; letter-spacing: 0.1em; animation: fadein 0.5s 0.2s both; }
+    #win-sub { font-size: 13px; color: #555; letter-spacing: 0.06em; animation: fadein 0.5s 0.3s both; }
+    @keyframes fadein { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    #win-scores {
+      display: flex; gap: 2rem; align-items: center;
+      background: #141414; border: 1px solid #1e1e1e;
+      border-radius: 10px; padding: 16px 32px;
+      animation: fadein 0.5s 0.4s both;
+    }
+    .ws-p { text-align: center; }
+    .ws-name { font-size: 11px; color: #444; letter-spacing: 0.06em; }
+    .ws-score { font-size: 42px; font-weight: 500; }
+    #win-sep { font-size: 18px; color: #2a2a2a; }
+    #win-btns { display: flex; gap: 10px; animation: fadein 0.5s 0.5s both; }
+    .win-btn {
+      font-family: monospace; font-size: 14px; padding: 11px 28px;
+      border: 1.5px solid #2a2a2a; border-radius: 8px;
+      background: transparent; color: #777; cursor: pointer; transition: all 0.15s;
+    }
+    .win-btn:hover { border-color: #444; color: #ccc; }
+    .win-btn.primary { border-color: #1D9E75; color: #1D9E75; background: #0a1f17; }
+    .win-btn.primary:hover { background: #1D9E75; color: #fff; }
+  </style>
+</head>
+<body>
+
+  <!-- MENY -->
+  <div id="menu" class="screen active">
+    <h1>AIR HOCKEY</h1>
+    <p id="menu-sub">1 VS 1 &bull; SAMMA TANGENTBORD</p>
+    <div id="score-select">
+      <p>VINNA MED</p>
+      <div id="score-btns">
+        <button class="score-btn" data-v="3">3</button>
+        <button class="score-btn" data-v="5">5</button>
+        <button class="score-btn selected" data-v="7">7</button>
+        <button class="score-btn" data-v="10">10</button>
+      </div>
+    </div>
+    <button id="play-btn">SPELA</button>
+    <div id="controls-hint">
+      <span>S1: W / A / S / D</span>
+      <span>S2: Piltangenter</span>
+    </div>
+  </div>
+
+  <!-- SPEL -->
+  <div id="game" class="screen">
+    <div id="scoreboard">
+      <div style="text-align:center">
+        <div class="p-name">SPELARE 1</div>
+        <div class="p-score" id="s1" style="color:#1D9E75">0</div>
+      </div>
+      <div id="sep">—</div>
+      <div style="text-align:center">
+        <div class="p-name">SPELARE 2</div>
+        <div class="p-score" id="s2" style="color:#D85A30">0</div>
+      </div>
+    </div>
+    <canvas id="ah-canvas" width="600" height="360"></canvas>
+    <div id="ah-msg">Tryck MELLANSLAG för att starta</div>
+    <div id="game-btns">
+      <button class="gbtn" id="pauseBtn">Paus</button>
+      <button class="gbtn" id="menuBtn">Meny</button>
+    </div>
+  </div>
+
+  <!-- VINST -->
+  <div id="winscreen" class="screen">
+    <div id="win-trophy">🏆</div>
+    <div id="win-title"></div>
+    <div id="win-sub">vinner matchen!</div>
+    <div id="win-scores">
+      <div class="ws-p">
+        <div class="ws-name">SPELARE 1</div>
+        <div class="ws-score" id="ws1" style="color:#1D9E75">0</div>
+      </div>
+      <div id="win-sep">—</div>
+      <div class="ws-p">
+        <div class="ws-name">SPELARE 2</div>
+        <div class="ws-score" id="ws2" style="color:#D85A30">0</div>
+      </div>
+    </div>
+    <div id="win-btns">
+      <button class="win-btn" id="winMenuBtn">Meny</button>
+      <button class="win-btn primary" id="rematchBtn">Rematch</button>
+    </div>
+  </div>
+
+<script>
+const canvas = document.getElementById('ah-canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+const GOAL_W = 120, PAD_R = 28, PUCK_R = 14, PUCK_SPEED = 6;
+
+let WIN_SCORE = 7;
+let scores = [0, 0];
+let keys = {};
+let gs = { running: false, paused: true };
+let flash = null;
+let paddles, puck;
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+document.querySelectorAll('.score-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.score-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    WIN_SCORE = parseInt(btn.dataset.v);
+  });
+});
+
+document.getElementById('play-btn').onclick = () => { showScreen('game'); initGame(); };
+document.getElementById('menuBtn').onclick = () => { gs.running = false; showScreen('menu'); };
+document.getElementById('winMenuBtn').onclick = () => showScreen('menu');
+document.getElementById('rematchBtn').onclick = () => { showScreen('game'); initGame(); };
+document.getElementById('pauseBtn').onclick = () => {
+  if (!gs.running) return;
+  gs.paused = !gs.paused;
+  document.getElementById('pauseBtn').textContent = gs.paused ? 'Fortsätt' : 'Paus';
+  if (!gs.paused) setMsg('');
+};
+
+function resetEntities(serveDir) {
+  paddles = [
+    { x: 80, y: H/2, vx: 0, vy: 0 },
+    { x: W-80, y: H/2, vx: 0, vy: 0 }
+  ];
+  const angle = (Math.random()*0.6-0.3) + (serveDir > 0 ? 0 : Math.PI);
+  puck = { x: W/2, y: H/2, vx: Math.cos(angle)*PUCK_SPEED, vy: Math.sin(angle)*PUCK_SPEED, trail: [] };
+}
+
+function initGame() {
+  scores = [0, 0];
+  document.getElementById('s1').textContent = '0';
+  document.getElementById('s2').textContent = '0';
+  document.getElementById('pauseBtn').textContent = 'Paus';
+  resetEntities(1);
+  gs.running = true; gs.paused = true; flash = null;
+  setMsg('Tryck MELLANSLAG för att starta');
+}
+
+function setMsg(m) { document.getElementById('ah-msg').textContent = m; }
+function clamp(v,lo,hi) { return Math.max(lo, Math.min(hi, v)); }
+
+function update() {
+  if (!gs.running || gs.paused) return;
+  let p1=paddles[0], p2=paddles[1];
+  let ax1=0,ay1=0,ax2=0,ay2=0;
+  if(keys['w']||keys['W'])ay1=-1; if(keys['s']||keys['S'])ay1=1;
+  if(keys['a']||keys['A'])ax1=-1; if(keys['d']||keys['D'])ax1=1;
+  if(keys['ArrowUp'])ay2=-1; if(keys['ArrowDown'])ay2=1;
+  if(keys['ArrowLeft'])ax2=-1; if(keys['ArrowRight'])ax2=1;
+  const ACC=1.2,FRIC=0.8,MAXSPD=7;
+  p1.vx=clamp((p1.vx+ax1*ACC)*FRIC,-MAXSPD,MAXSPD); p1.vy=clamp((p1.vy+ay1*ACC)*FRIC,-MAXSPD,MAXSPD);
+  p2.vx=clamp((p2.vx+ax2*ACC)*FRIC,-MAXSPD,MAXSPD); p2.vy=clamp((p2.vy+ay2*ACC)*FRIC,-MAXSPD,MAXSPD);
+  p1.x=clamp(p1.x+p1.vx,PAD_R,W/2-PAD_R); p1.y=clamp(p1.y+p1.vy,PAD_R,H-PAD_R);
+  p2.x=clamp(p2.x+p2.vx,W/2+PAD_R,W-PAD_R); p2.y=clamp(p2.y+p2.vy,PAD_R,H-PAD_R);
+  puck.trail.push({x:puck.x,y:puck.y});
+  if(puck.trail.length>8)puck.trail.shift();
+  puck.x+=puck.vx; puck.y+=puck.vy;
+  if(puck.y-PUCK_R<0){puck.y=PUCK_R;puck.vy=Math.abs(puck.vy);}
+  if(puck.y+PUCK_R>H){puck.y=H-PUCK_R;puck.vy=-Math.abs(puck.vy);}
+  const gt=(H-GOAL_W)/2,gb=gt+GOAL_W;
+  if(puck.x-PUCK_R<0){if(puck.y>gt&&puck.y<gb){goal(1);return;}else{puck.x=PUCK_R;puck.vx=Math.abs(puck.vx);}}
+  if(puck.x+PUCK_R>W){if(puck.y>gt&&puck.y<gb){goal(0);return;}else{puck.x=W-PUCK_R;puck.vx=-Math.abs(puck.vx);}}
+  [p1,p2].forEach(p=>{
+    const dx=puck.x-p.x,dy=puck.y-p.y,dist=Math.sqrt(dx*dx+dy*dy),minD=PAD_R+PUCK_R;
+    if(dist<minD&&dist>0){
+      const nx=dx/dist,ny=dy/dist;
+      puck.x=p.x+nx*minD; puck.y=p.y+ny*minD;
+      const rel=(puck.vx-p.vx)*nx+(puck.vy-p.vy)*ny;
+      if(rel<0){puck.vx-=2*rel*nx;puck.vy-=2*rel*ny;}
+      const sp=Math.sqrt(puck.vx*puck.vx+puck.vy*puck.vy);
+      if(sp<PUCK_SPEED){puck.vx*=PUCK_SPEED/sp;puck.vy*=PUCK_SPEED/sp;}
+      if(sp>PUCK_SPEED*2.5){puck.vx*=PUCK_SPEED*2.5/sp;puck.vy*=PUCK_SPEED*2.5/sp;}
+    }
+  });
+}
+
+function goal(scorer) {
+  scores[scorer]++;
+  document.getElementById('s'+(scorer+1)).textContent = scores[scorer];
+  flash = {scorer, timer: 45};
+  if(scores[scorer]>=WIN_SCORE){
+    gs.running=false; gs.paused=true;
+    setTimeout(()=>showWin(scorer), 700);
+  } else {
+    gs.paused=true;
+    setMsg('MÅL av Spelare '+(scorer+1)+'!  Mellanslag för fortsätta');
+    resetEntities(scorer===0?1:-1);
+  }
+}
+
+function showWin(scorer) {
+  document.getElementById('ws1').textContent = scores[0];
+  document.getElementById('ws2').textContent = scores[1];
+  const t = document.getElementById('win-title');
+  t.textContent = 'SPELARE '+(scorer+1);
+  t.style.color = scorer===0 ? '#1D9E75' : '#D85A30';
+  showScreen('winscreen');
+}
+
+function draw() {
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#111';
+  ctx.beginPath(); ctx.roundRect(0,0,W,H,6); ctx.fill();
+  if(flash&&flash.timer>0){
+    ctx.fillStyle=(flash.scorer===0?'#1D9E75':'#D85A30')+'22';
+    ctx.fillRect(0,0,W,H); flash.timer--;
+  }
+  ctx.setLineDash([6,6]); ctx.strokeStyle='#1a1a1a'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(W/2,0); ctx.lineTo(W/2,H); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.beginPath(); ctx.arc(W/2,H/2,50,0,Math.PI*2);
+  ctx.strokeStyle='#1a1a1a'; ctx.lineWidth=1.5; ctx.stroke();
+  const gt=(H-GOAL_W)/2,gb=gt+GOAL_W;
+  ctx.fillStyle='rgba(255,255,255,0.02)';
+  ctx.fillRect(0,gt,30,GOAL_W); ctx.fillRect(W-30,gt,30,GOAL_W);
+  ctx.strokeStyle='#D85A30'; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.moveTo(4,gt); ctx.lineTo(4,gb); ctx.stroke();
+  ctx.strokeStyle='#1D9E75';
+  ctx.beginPath(); ctx.moveTo(W-4,gt); ctx.lineTo(W-4,gb); ctx.stroke();
+  ctx.fillStyle='#252525'; ctx.font='11px monospace'; ctx.textAlign='center';
+  ctx.fillText('första till '+WIN_SCORE, W/2, H-8);
+  puck.trail.forEach((pt,i)=>{
+    const a=(i/puck.trail.length)*0.28;
+    ctx.beginPath(); ctx.arc(pt.x,pt.y,PUCK_R*(i/puck.trail.length),0,Math.PI*2);
+    ctx.fillStyle='#ddd'+Math.floor(a*255).toString(16).padStart(2,'0'); ctx.fill();
+  });
+  ctx.beginPath(); ctx.arc(puck.x,puck.y,PUCK_R,0,Math.PI*2);
+  ctx.fillStyle='#e0ddd5'; ctx.fill();
+  [[paddles[0],'#1D9E75'],[paddles[1],'#D85A30']].forEach(([p,col])=>{
+    ctx.beginPath(); ctx.arc(p.x,p.y,PAD_R,0,Math.PI*2);
+    ctx.fillStyle=col+'28'; ctx.fill();
+    ctx.strokeStyle=col; ctx.lineWidth=2.5; ctx.stroke();
+    ctx.beginPath(); ctx.arc(p.x,p.y,8,0,Math.PI*2);
+    ctx.fillStyle=col; ctx.fill();
+  });
+  if(gs.paused&&gs.running){ctx.fillStyle='rgba(0,0,0,0.2)';ctx.fillRect(0,0,W,H);}
+}
+
+function loop(){ update(); draw(); requestAnimationFrame(loop); }
+
+document.addEventListener('keydown',e=>{
+  keys[e.key]=true;
+  if(e.key===' '){
+    e.preventDefault();
+    if(gs.running&&gs.paused){gs.paused=false;document.getElementById('pauseBtn').textContent='Paus';setMsg('');}
+  }
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key))e.preventDefault();
+});
+document.addEventListener('keyup',e=>{keys[e.key]=false;});
+
+resetEntities(1);
+loop();
+</script>
+</body>
+</html>
